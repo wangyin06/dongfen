@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   Check,
@@ -21,8 +21,9 @@ import {
 } from '../lib/score';
 import { createId } from '../lib/db';
 import { formatRelativeDate, todayKey } from '../lib/date';
+import { validateWorkoutRecord } from '../lib/validation';
 import { useApp } from '../state/AppContext';
-import { CategoryBadge, Sheet, Stepper } from './ui';
+import { CategoryBadge, Dialog, Sheet, Stepper } from './ui';
 import { CATEGORY_ICONS } from './categoryIcon';
 
 type PickerCategory = CategoryId | 'all';
@@ -79,22 +80,31 @@ export function LogSheet({ open, onClose, editRecord = null, initialExercise = n
   const [timerRunning, setTimerRunning] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [timerSide, setTimerSide] = useState<'left' | 'right'>('left');
+  const [dirty, setDirty] = useState(false);
+  const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
+  const timerStartedAt = useRef<number | null>(null);
   const dateId = useId();
   const noteId = useId();
 
   useEffect(() => {
     if (!open) {
+      timerStartedAt.current = null;
       setTimerRunning(false);
       setElapsed(0);
+      setDirty(false);
+      setConfirmCloseOpen(false);
       return;
     }
     setError('');
     setSearch('');
     setCategory('all');
     setSyncSides(true);
+    timerStartedAt.current = null;
     setTimerRunning(false);
     setElapsed(0);
     setTimerSide('left');
+    setDirty(false);
+    setConfirmCloseOpen(false);
     const target = editRecord ? exerciseMap.get(editRecord.exerciseId) ?? exerciseFromRecord(editRecord) : initialExercise;
     if (target) {
       const targetAmount = editRecord?.amount ?? defaultAmount(target);
@@ -120,8 +130,20 @@ export function LogSheet({ open, onClose, editRecord = null, initialExercise = n
 
   useEffect(() => {
     if (!timerRunning) return;
-    const timer = window.setInterval(() => setElapsed((current) => current + 1), 1000);
-    return () => window.clearInterval(timer);
+    const syncElapsed = () => {
+      const startedAt = timerStartedAt.current;
+      if (startedAt === null) return;
+      setElapsed(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)));
+    };
+    syncElapsed();
+    const timer = window.setInterval(syncElapsed, 250);
+    window.addEventListener('focus', syncElapsed);
+    document.addEventListener('visibilitychange', syncElapsed);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', syncElapsed);
+      document.removeEventListener('visibilitychange', syncElapsed);
+    };
   }, [timerRunning]);
 
   const recentExercises = useMemo(() => {
@@ -182,15 +204,32 @@ export function LogSheet({ open, onClose, editRecord = null, initialExercise = n
     setQuality(settings.defaultQuality);
     setNote('');
     setError('');
+    setDirty(true);
+    timerStartedAt.current = null;
     setElapsed(0);
     setTimerRunning(false);
     setTimerSide('left');
   };
 
+  const startTimer = () => {
+    timerStartedAt.current = Date.now();
+    setElapsed(0);
+    setTimerRunning(true);
+  };
+
+  const resetTimer = () => {
+    timerStartedAt.current = null;
+    setElapsed(0);
+  };
+
   const stopTimer = () => {
     if (!selected) return;
-    const seconds = Math.max(elapsed, 1);
+    const startedAt = timerStartedAt.current;
+    const seconds = Math.max(1, startedAt === null ? elapsed : Math.floor((Date.now() - startedAt) / 1000));
+    timerStartedAt.current = null;
+    setElapsed(seconds);
     setTimerRunning(false);
+    setDirty(true);
     if (!selected.perSide) {
       setAmount(seconds);
       return;
@@ -203,6 +242,23 @@ export function LogSheet({ open, onClose, editRecord = null, initialExercise = n
     } else {
       setRight(seconds);
     }
+  };
+
+  const requestClose = () => {
+    if (saving) return;
+    if (dirty) {
+      setConfirmCloseOpen(true);
+      return;
+    }
+    onClose();
+  };
+
+  const discardAndClose = () => {
+    timerStartedAt.current = null;
+    setTimerRunning(false);
+    setDirty(false);
+    setConfirmCloseOpen(false);
+    onClose();
   };
 
   const handleSave = async (andContinue = false) => {
@@ -232,9 +288,19 @@ export function LogSheet({ open, onClose, editRecord = null, initialExercise = n
       createdAt: editRecord?.createdAt ?? now,
       updatedAt: now,
     };
+    const validationError = validateWorkoutRecord(record);
+    if (validationError) {
+      setSaving(false);
+      setError(validationError);
+      return;
+    }
     const ok = await saveWorkout(record);
     setSaving(false);
     if (!ok) return;
+    setDirty(false);
+    setConfirmCloseOpen(false);
+    timerStartedAt.current = null;
+    setTimerRunning(false);
 
     const savedScore = recordScore(record);
     const dayRecords = records.filter((item) => item.date === record.date && item.id !== record.id);
@@ -257,8 +323,10 @@ export function LogSheet({ open, onClose, editRecord = null, initialExercise = n
       setQuality(settings.defaultQuality);
       setElapsed(0);
       setTimerRunning(false);
+      timerStartedAt.current = null;
       setTimerSide('left');
       setError('');
+      setDirty(false);
     } else {
       onClose();
     }
@@ -267,16 +335,35 @@ export function LogSheet({ open, onClose, editRecord = null, initialExercise = n
   const changeLeft = (value: number) => {
     setLeft(value);
     if (syncSides) setRight(value);
+    setDirty(true);
   };
   const changeRight = (value: number) => {
     setRight(value);
     if (syncSides) setLeft(value);
+    setDirty(true);
+  };
+  const changeAmount = (value: number) => {
+    setAmount(value);
+    setDirty(true);
+  };
+  const changeDate = (value: string) => {
+    setDate(value || todayKey());
+    setDirty(true);
+  };
+  const changeQuality = (value: Quality) => {
+    setQuality(value);
+    setDirty(true);
+  };
+  const changeNote = (value: string) => {
+    setNote(value);
+    setDirty(true);
   };
 
   return (
+    <>
     <Sheet
       open={open}
-      onClose={onClose}
+      onClose={requestClose}
       title={editRecord ? '编辑记录' : '记录一次'}
       subtitle={step === 'amount' && selected ? selected.group : '把训练变成看得见的积累'}
       className="log-sheet"
@@ -444,7 +531,7 @@ export function LogSheet({ open, onClose, editRecord = null, initialExercise = n
               className="date-input"
               value={date}
               max={todayKey()}
-              onChange={(event) => setDate(event.target.value || todayKey())}
+              onChange={(event) => changeDate(event.target.value)}
             />
           </div>
 
@@ -459,6 +546,7 @@ export function LogSheet({ open, onClose, editRecord = null, initialExercise = n
                     onChange={(event) => {
                       setSyncSides(event.target.checked);
                       if (event.target.checked) setRight(left);
+                      setDirty(true);
                     }}
                   />
                   <span>同步两侧</span>
@@ -501,7 +589,7 @@ export function LogSheet({ open, onClose, editRecord = null, initialExercise = n
               </div>
               <Stepper
                 value={amount}
-                onChange={setAmount}
+                onChange={changeAmount}
                 step={selected.unitType === 'seconds' ? 5 : 1}
                 min={0}
                 max={9999}
@@ -510,7 +598,7 @@ export function LogSheet({ open, onClose, editRecord = null, initialExercise = n
               />
               <div className="quick-chips">
                 {(selected.unitType === 'seconds' ? [30, 45, 60, 90, 120] : [10, 15, 20, 30, 50]).map((value) => (
-                  <button key={value} type="button" onClick={() => setAmount(value)} className={amount === value ? 'is-active' : ''}>
+                  <button key={value} type="button" onClick={() => changeAmount(value)} className={amount === value ? 'is-active' : ''}>
                     {value}
                   </button>
                 ))}
@@ -559,17 +647,14 @@ export function LogSheet({ open, onClose, editRecord = null, initialExercise = n
                   <button
                     type="button"
                     className="btn btn-small btn-secondary"
-                    onClick={() => {
-                      setElapsed(0);
-                      setTimerRunning(true);
-                    }}
+                    onClick={startTimer}
                   >
                     <Timer size={16} />
                     开始计时
                   </button>
                 )}
                 {elapsed > 0 && !timerRunning ? (
-                  <button type="button" className="icon-action" onClick={() => setElapsed(0)} aria-label="重置计时">
+                  <button type="button" className="icon-action" onClick={resetTimer} aria-label="重置计时">
                     <RotateCcw size={16} />
                   </button>
                 ) : null}
@@ -585,7 +670,7 @@ export function LogSheet({ open, onClose, editRecord = null, initialExercise = n
                   key={option.value}
                   type="button"
                   className={`quality-option ${quality === option.value ? 'is-active' : ''}`}
-                  onClick={() => setQuality(option.value)}
+                  onClick={() => changeQuality(option.value)}
                   aria-pressed={quality === option.value}
                 >
                   <span className="quality-check">{quality === option.value ? <Check size={13} /> : null}</span>
@@ -604,7 +689,7 @@ export function LogSheet({ open, onClose, editRecord = null, initialExercise = n
             <textarea
               id={noteId}
               value={note}
-              onChange={(event) => setNote(event.target.value)}
+              onChange={(event) => changeNote(event.target.value)}
               maxLength={160}
               rows={2}
               placeholder="今天的状态、感受或调整…"
@@ -626,5 +711,23 @@ export function LogSheet({ open, onClose, editRecord = null, initialExercise = n
         </div>
       )}
     </Sheet>
+    <Dialog
+      open={confirmCloseOpen}
+      onClose={() => setConfirmCloseOpen(false)}
+      title="放弃这次记录？"
+      footer={
+        <>
+          <button type="button" className="btn btn-secondary" onClick={() => setConfirmCloseOpen(false)}>
+            继续编辑
+          </button>
+          <button type="button" className="btn btn-danger" onClick={discardAndClose}>
+            放弃修改
+          </button>
+        </>
+      }
+    >
+      <p>当前填写的内容还没有保存，关闭后会丢失。</p>
+    </Dialog>
+    </>
   );
 }

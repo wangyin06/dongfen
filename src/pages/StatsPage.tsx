@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import {
   ArrowUpRight,
   BarChart3,
@@ -12,6 +12,7 @@ import type { OpenLogOptions } from '../types';
 import { CATEGORY_LIST } from '../data/exercises';
 import { useApp } from '../state/AppContext';
 import {
+  daysBetween,
   endOfWeek,
   getLastNDays,
   getMonthDates,
@@ -41,7 +42,9 @@ export function StatsPage({ onOpenLog }: { onOpenLog: (options?: OpenLogOptions)
   const periodRecords = records.filter((record) => record.date >= range.start && record.date <= range.end);
   const totalScore = sumRecords(periodRecords);
   const activeDays = new Set(periodRecords.map((record) => record.date)).size;
-  const daysCount = Math.max(1, Math.round((new Date(`${range.end}T12:00:00`).getTime() - new Date(`${range.start}T12:00:00`).getTime()) / 86_400_000) + 1);
+  const periodOngoing = range.end > today;
+  const effectiveEnd = periodOngoing ? today : range.end;
+  const daysCount = Math.max(1, daysBetween(range.start, effectiveEnd) + 1);
   const avgScore = totalScore / daysCount;
   const categoryScores = groupScoreByCategory(periodRecords);
   const top = topExercises(periodRecords, 5);
@@ -58,8 +61,10 @@ export function StatsPage({ onOpenLog }: { onOpenLog: (options?: OpenLogOptions)
     return getLastNDays(range.end, 30);
   }, [period, range.end]);
   const chartScores = groupScoreByDate(periodRecords);
-  const maxChart = Math.max(settings.hardDayLimit, ...chartDates.map((date) => chartScores.get(date) ?? 0));
+  const rawMaxChart = Math.max(4, settings.hardDayLimit * 1.25, ...chartDates.map((date) => chartScores.get(date) ?? 0));
+  const maxChart = Math.ceil(rawMaxChart * 2) / 2;
   const bestDay = Math.max(0, ...chartDates.map((date) => chartScores.get(date) ?? 0));
+  const thresholdRatio = Math.min(1, settings.hardDayLimit / maxChart);
   const labelEvery = period === 'week' ? 1 : period === 'month' ? 5 : 5;
 
   return (
@@ -111,7 +116,7 @@ export function StatsPage({ onOpenLog }: { onOpenLog: (options?: OpenLogOptions)
           </div>
           <div className="stats-mini-grid">
             <div>
-              <span>日均</span>
+              <span>{periodOngoing ? '日均（截至今天）' : '日均'}</span>
               <strong>{formatScore(avgScore)}</strong>
             </div>
             <div>
@@ -164,7 +169,7 @@ export function StatsPage({ onOpenLog }: { onOpenLog: (options?: OpenLogOptions)
             <p className="eyebrow">DAILY PULSE</p>
             <h2>每日得分</h2>
           </div>
-          <span className="section-note">虚线为高强度日上限 {settings.hardDayLimit.toFixed(1)} 分</span>
+          <span className="section-note">虚线为高强度日上限 {settings.hardDayLimit.toFixed(1)} 分，柱子超过该线即为高强度日</span>
         </div>
         <div className="chart-card">
           <div className="chart-area">
@@ -174,6 +179,11 @@ export function StatsPage({ onOpenLog }: { onOpenLog: (options?: OpenLogOptions)
               <span />
             </div>
             <div className="chart-bars">
+              <span
+                className="chart-threshold"
+                style={{ '--threshold': thresholdRatio } as CSSProperties}
+                aria-hidden="true"
+              />
               {chartDates.map((date, index) => {
                 const score = chartScores.get(date) ?? 0;
                 const height = score > 0 ? Math.max(4, (score / maxChart) * 100) : 2;
@@ -182,7 +192,7 @@ export function StatsPage({ onOpenLog }: { onOpenLog: (options?: OpenLogOptions)
                   <div className={`chart-column ${date === today ? 'is-today' : ''}`} key={date}>
                     <span className="chart-tooltip">{score > 0 ? formatScore(score) : ''}</span>
                     <div className="chart-bar-track">
-                      <span className={`chart-bar ${score >= settings.hardDayLimit ? 'is-hard' : ''}`} style={{ height: `${height}%` }} />
+                      <span className={`chart-bar ${score > settings.hardDayLimit ? 'is-hard' : ''}`} style={{ height: `${height}%` }} />
                     </div>
                     <span className="chart-label">{showLabel ? (period === 'week' ? weekdayShort(date) : date.slice(8)) : ''}</span>
                   </div>
@@ -192,7 +202,7 @@ export function StatsPage({ onOpenLog }: { onOpenLog: (options?: OpenLogOptions)
           </div>
           <div className="chart-legend">
             <span><i className="legend-dot" /> 每日得分</span>
-            <span><i className="legend-dot is-hard" /> 高强度日</span>
+            <span><i className="legend-dot is-hard" /> 超过上限</span>
           </div>
         </div>
       </section>

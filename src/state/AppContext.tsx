@@ -9,6 +9,7 @@ import {
 } from 'react';
 import type { AppSettings, BackupData, Exercise, WorkoutRecord } from '../types';
 import { mergeExercises } from '../data/exercises';
+import { validateWorkoutRecord } from '../lib/validation';
 import {
   DEFAULT_SETTINGS,
   clearAllData as clearDatabase,
@@ -107,6 +108,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const exerciseMap = useMemo(() => new Map(exercises.map((exercise) => [exercise.id, exercise])), [exercises]);
 
   const saveWorkout = useCallback(async (record: WorkoutRecord) => {
+    const validationError = validateWorkoutRecord(record);
+    if (validationError) {
+      setToast({ id: Date.now(), message: validationError, tone: 'error' });
+      return false;
+    }
     try {
       await putRecord(record);
       setRecords((current) => sortRecords([...current.filter((item) => item.id !== record.id), record]));

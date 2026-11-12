@@ -1,5 +1,6 @@
 import { openDB, type DBSchema } from 'idb';
 import type { AppSettings, BackupData, Exercise, WorkoutRecord } from '../types';
+import { validateWorkoutRecord } from './validation';
 
 interface DongfenDB extends DBSchema {
   records: {
@@ -94,6 +95,8 @@ export async function getAllRecords(): Promise<WorkoutRecord[]> {
 }
 
 export async function putRecord(record: WorkoutRecord): Promise<void> {
+  const validationError = validateWorkoutRecord(record);
+  if (validationError) throw new Error(validationError);
   const db = await getDB();
   await db.put('records', record);
 }

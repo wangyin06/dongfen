@@ -19,6 +19,8 @@ import androidx.annotation.NonNull;
 import androidx.webkit.WebViewAssetLoader;
 import androidx.webkit.WebViewClientCompat;
 
+import org.json.JSONObject;
+
 import java.io.OutputStream;
 
 public class MainActivity extends Activity {
@@ -29,6 +31,7 @@ public class MainActivity extends Activity {
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
     private byte[] pendingExportData;
+    private String pendingExportRequestId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -107,12 +110,18 @@ public class MainActivity extends Activity {
     private class AndroidFileBridge {
         @JavascriptInterface
         public void saveText(final String filename, final String mime, final String base64) {
+            saveText(filename, mime, base64, null);
+        }
+
+        @JavascriptInterface
+        public void saveText(final String filename, final String mime, final String base64, final String requestId) {
             runOnUiThread(() -> {
                 try {
                     String normalizedMime = mime == null || mime.isEmpty()
                             ? "application/octet-stream"
                             : mime.split(";")[0];
                     pendingExportData = Base64.decode(base64, Base64.NO_WRAP);
+                    pendingExportRequestId = requestId;
                     Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
                     intent.addCategory(Intent.CATEGORY_OPENABLE);
                     intent.setType(normalizedMime);
@@ -120,10 +129,23 @@ public class MainActivity extends Activity {
                     startActivityForResult(intent, REQUEST_CREATE_DOCUMENT);
                 } catch (Exception exception) {
                     pendingExportData = null;
+                    pendingExportRequestId = null;
+                    notifyExportResult(requestId, "failed", exception.getMessage());
                     Toast.makeText(MainActivity.this, "导出失败，请重试", Toast.LENGTH_SHORT).show();
                 }
             });
         }
+    }
+
+    private void notifyExportResult(final String requestId, final String status, final String message) {
+        if (requestId == null || webView == null) return;
+        final String script = "window.AndroidFileResult&&window.AndroidFileResult("
+                + JSONObject.quote(requestId) + ","
+                + JSONObject.quote(status) + ","
+                + JSONObject.quote(message == null ? "" : message) + ");";
+        webView.post(() -> {
+            if (webView != null) webView.evaluateJavascript(script, null);
+        });
     }
 
     @Override
@@ -151,18 +173,27 @@ public class MainActivity extends Activity {
         }
 
         if (requestCode == REQUEST_CREATE_DOCUMENT) {
-            if (resultCode == RESULT_OK && data != null && data.getData() != null
-                    && pendingExportData != null) {
+            String requestId = pendingExportRequestId;
+            if (resultCode != RESULT_OK || data == null || data.getData() == null
+                    || pendingExportData == null) {
+                notifyExportResult(requestId, "cancelled", "");
+            } else {
                 try (OutputStream output = getContentResolver().openOutputStream(data.getData())) {
                     if (output != null) {
                         output.write(pendingExportData);
+                        notifyExportResult(requestId, "saved", "");
                         Toast.makeText(this, "已保存", Toast.LENGTH_SHORT).show();
+                    } else {
+                        notifyExportResult(requestId, "failed", "无法打开保存位置");
+                        Toast.makeText(this, "保存失败，请重试", Toast.LENGTH_SHORT).show();
                     }
                 } catch (Exception exception) {
+                    notifyExportResult(requestId, "failed", exception.getMessage());
                     Toast.makeText(this, "保存失败，请重试", Toast.LENGTH_SHORT).show();
                 }
             }
             pendingExportData = null;
+            pendingExportRequestId = null;
         }
     }
 

@@ -1664,12 +1664,24 @@ a {
 }
 
 .chart-bars {
+  --chart-track-height: 178px;
+  --chart-label-height: 22px;
   position: relative;
   z-index: 1;
   display: flex;
   height: 220px;
   align-items: stretch;
   gap: 4px;
+}
+
+.chart-threshold {
+  position: absolute;
+  right: 0;
+  bottom: calc(var(--chart-label-height) + var(--chart-track-height) * var(--threshold));
+  left: 0;
+  z-index: 2;
+  border-top: 1px dashed rgba(168, 60, 39, 0.55);
+  pointer-events: none;
 }
 
 .chart-column {
@@ -1707,7 +1719,7 @@ a {
 .chart-bar-track {
   display: flex;
   width: min(18px, 70%);
-  height: 178px;
+  height: var(--chart-track-height);
   align-items: flex-end;
 }
 
@@ -1735,7 +1747,7 @@ a {
 
 .chart-label {
   display: flex;
-  height: 22px;
+  height: var(--chart-label-height);
   align-items: flex-end;
   justify-content: center;
   color: var(--muted);
@@ -1913,6 +1925,10 @@ a {
   color: var(--muted);
   font-size: 10px;
   white-space: nowrap;
+}
+
+.library-create-mobile {
+  display: none;
 }
 
 .library-sections {
@@ -4005,17 +4021,17 @@ a {
   }
 
   .chart-bars {
+    --chart-track-height: 150px;
+    --chart-label-height: 19px;
     height: 188px;
     gap: 2px;
   }
 
   .chart-bar-track {
-    height: 150px;
     width: min(13px, 74%);
   }
 
   .chart-label {
-    height: 19px;
     font-size: 8px;
   }
 
@@ -4045,6 +4061,13 @@ a {
     flex: 1;
     padding: 0 6px;
     font-size: 10px;
+  }
+
+  .library-create-mobile {
+    display: inline-flex;
+    align-self: stretch;
+    justify-content: center;
+    margin-top: 2px;
   }
 
   .library-grid {

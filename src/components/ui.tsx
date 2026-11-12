@@ -17,6 +17,7 @@ export function Sheet({
   headerRight,
   children,
   className = '',
+  closeGuard,
 }: {
   open: boolean;
   onClose: () => void;
@@ -25,13 +26,21 @@ export function Sheet({
   headerRight?: ReactNode;
   children: ReactNode;
   className?: string;
+  closeGuard?: () => boolean;
 }) {
   const titleId = useId();
+  const requestClose = () => {
+    if (closeGuard?.()) return;
+    onClose();
+  };
 
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') {
+        if (closeGuard?.()) return;
+        onClose();
+      }
     };
     document.addEventListener('keydown', onKeyDown);
     document.body.classList.add('no-scroll');
@@ -39,13 +48,13 @@ export function Sheet({
       document.removeEventListener('keydown', onKeyDown);
       document.body.classList.remove('no-scroll');
     };
-  }, [open, onClose]);
+  }, [open, onClose, closeGuard]);
 
   if (!open) return null;
 
   return createPortal(
     <div className="sheet-layer">
-      <div className="sheet-backdrop" onClick={onClose} aria-hidden="true" />
+      <div className="sheet-backdrop" onClick={requestClose} aria-hidden="true" />
       <section className={`sheet ${className}`} role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <div className="sheet-grab" aria-hidden="true" />
         <header className="sheet-head">
@@ -55,7 +64,7 @@ export function Sheet({
           </div>
           <div className="sheet-head-actions">
             {headerRight}
-            <button type="button" className="icon-btn" onClick={onClose} aria-label="关闭">
+            <button type="button" className="icon-btn" onClick={requestClose} aria-label="关闭">
               <X size={20} />
             </button>
           </div>

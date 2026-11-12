@@ -177,6 +177,10 @@ export function LibraryPage({ onOpenLog }: { onOpenLog: (options?: OpenLogOption
             onChange={setLevelFilter}
             ariaLabel="按难度筛选"
           />
+          <button type="button" className="btn btn-secondary btn-small library-create-mobile" onClick={openCustom}>
+            <Plus size={16} />
+            自定义动作
+          </button>
           <span className="library-count">{filtered.length} 个动作</span>
         </div>
       </section>

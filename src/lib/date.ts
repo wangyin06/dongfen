@@ -12,6 +12,13 @@ export function parseDateKey(key: string): Date {
   return new Date(year, month - 1, day, 12, 0, 0, 0);
 }
 
+export function isValidDateKey(key: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return false;
+  const [year, month, day] = key.split('-').map(Number);
+  const date = new Date(year, month - 1, day, 12, 0, 0, 0);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+}
+
 export function todayKey(): string {
   return toDateKey(new Date());
 }

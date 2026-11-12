@@ -24,11 +24,36 @@ import {
   recordsToCsv,
   type BackupValidationResult,
 } from '../lib/backup';
-import { exportAllData, normalizeSettings } from '../lib/db';
+import { exportAllData } from '../lib/db';
 import { useInstallPrompt } from '../hooks/useInstallPrompt';
 import { Dialog, Segmented } from '../components/ui';
 
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.0.2';
+const LAST_EXPORT_KEY = 'dongfen.last-export-at';
+
+function readLastExportAt(): string | undefined {
+  try {
+    return window.localStorage.getItem(LAST_EXPORT_KEY) ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function rememberLastExportAt(value: string): void {
+  try {
+    window.localStorage.setItem(LAST_EXPORT_KEY, value);
+  } catch {
+    // 隐私模式可能禁用 localStorage，界面仍保留本次会话的导出时间。
+  }
+}
+
+function forgetLastExportAt(): void {
+  try {
+    window.localStorage.removeItem(LAST_EXPORT_KEY);
+  } catch {
+    // 隐私模式下没有可清理的持久化值。
+  }
+}
 
 function formatExportTime(value?: string): string {
   if (!value) return '还没有导出过';
@@ -40,6 +65,7 @@ export function SettingsPage() {
   const { records, customExercises, settings, updateSettings, importData, clearEverything, notify } = useApp();
   const { canInstall, installed, install } = useInstallPrompt();
   const [draft, setDraft] = useState<AppSettings>(settings);
+  const [lastExportAt, setLastExportAt] = useState<string | undefined>(() => readLastExportAt() ?? settings.lastExportAt);
   const [saving, setSaving] = useState(false);
   const [importPending, setImportPending] = useState<BackupValidationResult | null>(null);
   const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge');
@@ -52,6 +78,14 @@ export function SettingsPage() {
   useEffect(() => {
     setDraft(settings);
   }, [settings]);
+
+  useEffect(() => {
+    setLastExportAt((current) => {
+      if (!settings.lastExportAt) return current;
+      if (!current || settings.lastExportAt > current) return settings.lastExportAt;
+      return current;
+    });
+  }, [settings.lastExportAt]);
 
   const dirty =
     draft.weeklyGoal !== settings.weeklyGoal ||
@@ -69,24 +103,45 @@ export function SettingsPage() {
 
   const exportJson = async () => {
     const now = new Date().toISOString();
-    const data = await exportAllData();
-    const nextSettings = normalizeSettings({ ...draft, lastExportAt: now });
-    downloadTextFile(
-      backupFilename(),
-      backupToJson({ ...data, exportedAt: now, settings: nextSettings }),
-      'application/json',
-    );
-    await updateSettings(nextSettings);
-    notify('JSON 备份已下载');
+    try {
+      const data = await exportAllData();
+      const result = await downloadTextFile(
+        backupFilename(),
+        backupToJson({ ...data, exportedAt: now, settings: { ...data.settings, lastExportAt: now } }),
+        'application/json',
+      );
+      if (result === 'cancelled') {
+        notify('已取消导出', 'info');
+        return;
+      }
+      if (result === 'failed') {
+        notify('导出失败，请重试', 'error');
+        return;
+      }
+      setLastExportAt(now);
+      rememberLastExportAt(now);
+      notify(result === 'saved' ? 'JSON 备份已保存' : 'JSON 备份已开始下载');
+    } catch (error) {
+      console.error(error);
+      notify('导出失败，请重试', 'error');
+    }
   };
 
-  const exportCsv = () => {
+  const exportCsv = async () => {
     if (records.length === 0) {
       notify('还没有记录可以导出', 'info');
       return;
     }
-    downloadTextFile(csvFilename(), recordsToCsv(records), 'text/csv;charset=utf-8');
-    notify('CSV 已下载，可用表格软件打开');
+    const result = await downloadTextFile(csvFilename(), recordsToCsv(records), 'text/csv;charset=utf-8');
+    if (result === 'cancelled') {
+      notify('已取消导出', 'info');
+      return;
+    }
+    if (result === 'failed') {
+      notify('导出失败，请重试', 'error');
+      return;
+    }
+    notify(result === 'saved' ? 'CSV 已保存，可用表格软件打开' : 'CSV 已开始下载，可用表格软件打开');
   };
 
   const pickImportFile = () => fileInputRef.current?.click();
@@ -125,6 +180,8 @@ export function SettingsPage() {
     const ok = await clearEverything();
     setClearing(false);
     if (ok) {
+      forgetLastExportAt();
+      setLastExportAt(undefined);
       notify('所有本地数据已清空');
       setClearOpen(false);
       setClearWord('');
@@ -260,7 +317,7 @@ export function SettingsPage() {
               <strong>数据只保存在这台设备</strong>
               <p>没有账号、没有云端。换设备或清理浏览器前，记得先导出备份。</p>
             </div>
-            <span className="backup-time">上次导出：{formatExportTime(settings.lastExportAt)}</span>
+            <span className="backup-time">上次导出：{formatExportTime(lastExportAt)}</span>
           </div>
           <div className="data-actions">
             <button type="button" className="data-action" onClick={() => void exportJson()}>

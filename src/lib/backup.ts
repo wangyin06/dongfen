@@ -205,8 +205,17 @@ function csvCell(value: string): string {
   return `"${value.replaceAll('"', '""')}"`;
 }
 
+export type DownloadResult = 'started' | 'saved' | 'cancelled' | 'failed';
+
 type AndroidFileBridge = {
-  saveText: (filename: string, mime: string, base64: string) => void;
+  saveText: (filename: string, mime: string, base64: string, requestId: string) => void;
+};
+
+type AndroidFileResultHandler = (requestId: string, status: 'saved' | 'cancelled' | 'failed', message: string) => void;
+
+type AndroidExportWindow = Window & {
+  AndroidApp?: AndroidFileBridge;
+  AndroidFileResult?: AndroidFileResultHandler;
 };
 
 function utf8ToBase64(value: string): string {
@@ -219,27 +228,62 @@ function utf8ToBase64(value: string): string {
   return btoa(binary);
 }
 
-export function downloadTextFile(filename: string, content: string, type: string): void {
-  const bridge = (window as Window & { AndroidApp?: AndroidFileBridge }).AndroidApp;
+export function downloadTextFile(filename: string, content: string, type: string): Promise<DownloadResult> {
+  const androidWindow = window as AndroidExportWindow;
+  const bridge = androidWindow.AndroidApp;
   if (bridge) {
-    try {
-      bridge.saveText(filename, type, utf8ToBase64(content));
-      return;
-    } catch {
-      // WebView 桥不可用时退回浏览器下载。
-    }
+    return new Promise((resolve) => {
+      const requestId = `export-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      let settled = false;
+      const finish = (result: DownloadResult) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timeout);
+        if (androidWindow.AndroidFileResult === handler) {
+          delete androidWindow.AndroidFileResult;
+        }
+        resolve(result);
+      };
+      const handler: AndroidFileResultHandler = (id, status, message) => {
+        if (id !== requestId) return;
+        if (status === 'saved') {
+          finish('saved');
+          return;
+        }
+        if (status === 'cancelled') {
+          finish('cancelled');
+          return;
+        }
+        console.warn('Android 文件保存失败', message);
+        finish('failed');
+      };
+      const timeout = window.setTimeout(() => finish('failed'), 120_000);
+      androidWindow.AndroidFileResult = handler;
+      try {
+        bridge.saveText(filename, type, utf8ToBase64(content), requestId);
+      } catch (bridgeError) {
+        console.warn('WebView 文件桥接不可用', bridgeError);
+        finish('failed');
+      }
+    });
   }
 
-  const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.style.display = 'none';
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  try {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.style.display = 'none';
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return Promise.resolve('started');
+  } catch (error) {
+    console.warn('浏览器下载失败', error);
+    return Promise.resolve('failed');
+  }
 }
 
 export function backupFilename(): string {
