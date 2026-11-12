@@ -10,6 +10,8 @@
 
 手机直接打开上面的 HTTPS 地址，按系统提示安装到主屏幕即可。
 
+<img src="docs/install-qr.png" width="240" alt="扫码打开动分" />
+
 ![今日页](docs/screenshots/desktop-today.png)
 
 ## 为什么是「分」
