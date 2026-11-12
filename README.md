@@ -12,6 +12,22 @@
 
 <img src="docs/install-qr.png" width="240" alt="扫码打开动分" />
 
+## 安卓安装包
+
+如果不想经过浏览器安装，可以直接下载 APK：
+
+**[dongfen-v1.0.1.apk](https://github.com/wangyin06/dongfen/releases/download/v1.0.1/dongfen-v1.0.1.apk)**
+
+- 大小约 1.4 MB，支持 Android 8.0+
+- 离线 WebView 壳，内置全部前端资源，首次启动也不需要联网
+- JSON/CSV 导出会打开系统保存位置；JSON 导入会打开系统文件选择器
+- 数据保存在 App 自己的 WebView 存储中，与网页版数据互相独立
+- 卸载 App 会删除其中的本地数据
+- 使用 debug 签名，适合个人侧载，不是应用商店版本
+- SHA-256：`f8d42cd64a2c16f31a874be2fbb854ad55c3f50a75c9969d35bd0b44d22b7395`
+
+安装时如果系统提示“未知应用”，需要在文件管理器/浏览器设置里允许“安装未知应用”。
+
 ![今日页](docs/screenshots/desktop-today.png)
 
 ## 为什么是「分」
@@ -55,6 +71,17 @@ pnpm preview    # 预览生产构建
 ```
 
 技术栈：React 19、TypeScript、Vite 7、`vite-plugin-pwa`、`idb`、`lucide-react`。样式为手写 CSS，不依赖 Tailwind 或外部字体 CDN，保证离线可用。
+
+### 构建 APK
+
+APK 是原生 Android WebView 壳，离线加载 `android/app/src/main/assets/www` 内的前端构建产物。构建由 `.github/workflows/android.yml` 完成：
+
+1. `BUILD_TARGET=android` 构建相对路径、无 Service Worker 的 WebView 资源
+2. 复制到 Android assets
+3. Gradle `assembleDebug` 生成 `app-debug.apk`
+4. 上传到 GitHub Actions artifact
+
+本地构建需要 JDK 17、Android SDK 35、Gradle 8.9；直接使用 GitHub Actions 的 `Build Android APK` workflow 更省事。
 
 ## 数据与备份
 
