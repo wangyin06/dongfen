@@ -4,6 +4,12 @@
 
 不是训练计划打卡器，也不是社交健身 App。它只做一件事：把你今天实际完成的动作，折算成一个可累计、可回看的训练分。
 
+## 在线使用
+
+**https://wangyin06.github.io/dongfen/**
+
+手机直接打开上面的 HTTPS 地址，按系统提示安装到主屏幕即可。
+
 ![今日页](docs/screenshots/desktop-today.png)
 
 ## 为什么是「分」
@@ -87,12 +93,24 @@ docs/
 
 ## 部署与安装
 
-`pnpm build` 后，把 `dist/` 部署到任意 HTTPS 静态站点即可；没有后端依赖。
+当前部署在 GitHub Pages，地址：**https://wangyin06.github.io/dongfen/**。
 
-- **Android / Chrome / Edge**：用 HTTPS 打开页面，浏览器菜单选择「安装应用」或「添加到主屏幕」
-- **iPhone / Safari**：用 HTTPS 打开页面，分享按钮 → 「添加到主屏幕」
+这是一个子路径部署，构建时需要指定 `PAGES_BASE`：
 
-PWA 的 service worker 需要安全上下文：`localhost` 或 HTTPS。用手机通过局域网 IP 的普通 HTTP 访问时，页面能打开，但不能安装/离线缓存；正式使用请先部署到 HTTPS。首次打开后，页面、动作库和已加载资源会被缓存，之后可以离线记录。数据仍然只保存在本机。
+```powershell
+$env:PAGES_BASE = '/dongfen/'
+pnpm build
+```
+
+然后把 `dist/` 的内容发布到 `gh-pages` 分支（保留 `.nojekyll`）。如果部署到根路径（例如自有域名或 Cloudflare Pages），去掉 `PAGES_BASE` 重新执行 `pnpm build` 即可。
+
+安装步骤：
+
+- **Android / Chrome / Edge**：打开上面的 HTTPS 地址，浏览器菜单选择「安装应用」或「添加到主屏幕」
+- **iPhone / Safari**：打开地址，点分享按钮 → 「添加到主屏幕」
+- 首次打开需要联网；加载完成后，页面、动作库和已加载资源会被 service worker 缓存，之后可以离线记录
+
+PWA 的 service worker 需要安全上下文：`localhost` 或 HTTPS。用手机通过局域网 IP 的普通 HTTP 访问时，页面能打开，但不能安装/离线缓存。数据仍然只保存在本机。
 
 ## 截图
 
@@ -107,10 +125,11 @@ PWA 的 service worker 需要安全上下文：`localhost` 或 HTTPS。用手机
 ## 验收记录
 
 - `pnpm check`：TypeScript 无错误
-- `pnpm build`：生产构建成功，PWA service worker 预缓存 14 个资源（约 452 KiB）
+- `pnpm build`：生产构建成功，PWA service worker 预缓存 11 个资源（约 452 KiB）
 - 桌面 1280px：今日、记录、统计、动作库、设置五页及记录/编辑/删除/导出流程已走通
 - 手机 390px / 360px：今日页、记录页、底部导航、浮动记录按钮无横向溢出
 - 离线：关闭 preview 服务器后重新打开页面，应用仍可从 service worker 正常加载
+- GitHub Pages 线上验收：页面、manifest、图标、JS/CSS 均为 200；service worker 作用域 `/dongfen/`；断网刷新后应用仍正常显示
 - 验收测试产生的记录和自定义动作已清空，默认周目标恢复为 13 分
 
 ## 版本
