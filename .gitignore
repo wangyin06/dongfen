@@ -1,6 +1,13 @@
 node_modules/
 dist/
+dist-android/
 .vite/
+release/
+android/.gradle/
+android/build/
+android/local.properties
+android/app/build/
+android/app/src/main/assets/www/
 *.local
 .DS_Store
 Thumbs.db
