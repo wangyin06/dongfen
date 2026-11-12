@@ -16,15 +16,16 @@
 
 如果不想经过浏览器安装，可以直接下载 APK：
 
-**[dongfen-v1.0.1.apk](https://github.com/wangyin06/dongfen/releases/download/v1.0.1/dongfen-v1.0.1.apk)**
+**[dongfen-v1.0.2.apk](https://github.com/wangyin06/dongfen/releases/download/v1.0.2/dongfen-v1.0.2.apk)**
 
-- 大小约 1.4 MB，支持 Android 8.0+
+- 大小约 1.34 MiB（1,403,225 bytes），支持 Android 8.0+
 - 离线 WebView 壳，内置全部前端资源，首次启动也不需要联网
 - JSON/CSV 导出会打开系统保存位置；JSON 导入会打开系统文件选择器
+- 导出取消/失败会反馈给页面，不会误报“已保存”
 - 数据保存在 App 自己的 WebView 存储中，与网页版数据互相独立
 - 卸载 App 会删除其中的本地数据
 - 使用 debug 签名，适合个人侧载，不是应用商店版本
-- SHA-256：`f8d42cd64a2c16f31a874be2fbb854ad55c3f50a75c9969d35bd0b44d22b7395`
+- SHA-256：`a140f4e8e9a81de4502e301f17bcb3731600c110238c840f65fe3893d744d9ed`
 
 安装时如果系统提示“未知应用”，需要在文件管理器/浏览器设置里允许“安装未知应用”。
 
@@ -57,6 +58,8 @@
 - **设置**：周目标、日上限、周起始日、默认质量；JSON 完整备份、CSV 导出、JSON 合并/覆盖导入；清空数据
 - **PWA**：manifest、service worker、离线缓存、主屏幕安装图标
 - **本地优先**：没有账号、没有云端、没有追踪；数据只存在当前浏览器的 IndexedDB
+- **输入保护**：关闭未保存的记录会确认；未来日期、非法次数/秒数会被拦截；计时器按真实时间计算，切后台不会少计
+- **导出反馈**：JSON/CSV 会等待浏览器或 Android 系统确认保存结果；取消或失败不会误报成功，也不会擅自保存未确认的设置
 
 ## 开发
 
@@ -154,7 +157,7 @@ PWA 的 service worker 需要安全上下文：`localhost` 或 HTTPS。用手机
 ## 验收记录
 
 - `pnpm check`：TypeScript 无错误
-- `pnpm build`：生产构建成功，PWA service worker 预缓存 11 个资源（约 452 KiB）
+- `pnpm build`：生产构建成功，PWA service worker 预缓存 11 个资源（约 457 KiB）
 - 桌面 1280px：今日、记录、统计、动作库、设置五页及记录/编辑/删除/导出流程已走通
 - 手机 390px / 360px：今日页、记录页、底部导航、浮动记录按钮无横向溢出
 - 离线：关闭 preview 服务器后重新打开页面，应用仍可从 service worker 正常加载
@@ -163,4 +166,4 @@ PWA 的 service worker 需要安全上下文：`localhost` 或 HTTPS。用手机
 
 ## 版本
 
-v1.0.0 · 本地优先 · 无账号 · 无云端
+v1.0.2 · 本地优先 · 无账号 · 无云端
