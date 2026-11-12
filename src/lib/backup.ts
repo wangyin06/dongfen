@@ -205,7 +205,31 @@ function csvCell(value: string): string {
   return `"${value.replaceAll('"', '""')}"`;
 }
 
+type AndroidFileBridge = {
+  saveText: (filename: string, mime: string, base64: string) => void;
+};
+
+function utf8ToBase64(value: string): string {
+  const bytes = new TextEncoder().encode(value);
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+  }
+  return btoa(binary);
+}
+
 export function downloadTextFile(filename: string, content: string, type: string): void {
+  const bridge = (window as Window & { AndroidApp?: AndroidFileBridge }).AndroidApp;
+  if (bridge) {
+    try {
+      bridge.saveText(filename, type, utf8ToBase64(content));
+      return;
+    } catch {
+      // WebView 桥不可用时退回浏览器下载。
+    }
+  }
+
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
