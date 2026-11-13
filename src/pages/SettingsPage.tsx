@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Check,
   Database,
@@ -27,6 +27,8 @@ import {
 import { exportAllData } from '../lib/db';
 import { useInstallPrompt } from '../hooks/useInstallPrompt';
 import { Dialog, Segmented } from '../components/ui';
+import { getBackupReminder } from '../lib/backupReminder';
+import { todayKey } from '../lib/date';
 
 const APP_VERSION = __APP_VERSION__;
 const LAST_EXPORT_KEY = 'dongfen.last-export-at';
@@ -93,6 +95,11 @@ export function SettingsPage() {
     draft.easyDayLimit !== settings.easyDayLimit ||
     draft.weekStartsOn !== settings.weekStartsOn ||
     draft.defaultQuality !== settings.defaultQuality;
+
+  const backupReminder = useMemo(
+    () => getBackupReminder(records, lastExportAt, todayKey()),
+    [records, lastExportAt],
+  );
 
   const saveSettings = async () => {
     setSaving(true);
@@ -319,6 +326,22 @@ export function SettingsPage() {
             </div>
             <span className="backup-time">上次导出：{formatExportTime(lastExportAt)}</span>
           </div>
+          {backupReminder ? (
+            <div className="backup-reminder">
+              <Info size={16} />
+              <div>
+                <strong>
+                  {backupReminder.neverExported
+                    ? '还没有导出过备份'
+                    : `距离上次备份已 ${backupReminder.days} 天`}
+                </strong>
+                <p>记录只保存在这台设备，建议现在导出一份 JSON。</p>
+              </div>
+              <button type="button" className="btn btn-ghost btn-small" onClick={() => void exportJson()}>
+                现在导出
+              </button>
+            </div>
+          ) : null}
           <div className="data-actions">
             <button type="button" className="data-action" onClick={() => void exportJson()}>
               <span className="data-action-icon"><FileJson size={20} /></span>

@@ -725,6 +725,10 @@ a {
   margin: 0 auto;
 }
 
+.page-slot[hidden] {
+  display: none;
+}
+
 .bottom-nav,
 .fab {
   display: none;
@@ -2448,6 +2452,43 @@ a {
   white-space: nowrap;
 }
 
+.backup-reminder {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 2px;
+  padding: 11px 12px;
+  border: 1px solid rgba(169, 127, 39, 0.22);
+  border-radius: 12px;
+  background: rgba(169, 127, 39, 0.08);
+}
+
+.backup-reminder > svg {
+  flex: 0 0 auto;
+  color: var(--cat-legs);
+}
+
+.backup-reminder > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.backup-reminder strong {
+  display: block;
+  font-size: 10px;
+}
+
+.backup-reminder p {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.backup-reminder .btn {
+  flex: 0 0 auto;
+}
+
 .data-actions {
   display: flex;
   flex-direction: column;
@@ -4128,6 +4169,15 @@ a {
 
   .backup-time {
     grid-column: 2;
+  }
+
+  .backup-reminder {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .backup-reminder .btn {
+    margin-left: 26px;
   }
 
   .install-card,

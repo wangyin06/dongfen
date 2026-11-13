@@ -120,7 +120,7 @@ export function AppShell({
           </div>
         </header>
         <main className="app-main">
-          <div className="page-wrap" key={page}>
+          <div className="page-wrap">
             {children}
           </div>
         </main>

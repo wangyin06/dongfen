@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { PageId, OpenLogOptions, WorkoutRecord } from './types';
 import { AppProvider, useApp } from './state/AppContext';
 import { AppShell } from './components/AppShell';
@@ -50,20 +50,45 @@ function AppContent() {
   const [page, setPage] = useState<PageId>(pageFromHash);
   const [logOpen, setLogOpen] = useState(false);
   const [logOptions, setLogOptions] = useState<OpenLogOptions>({});
+  const scrollPositions = useRef<Record<PageId, number>>({
+    today: 0,
+    records: 0,
+    stats: 0,
+    library: 0,
+    settings: 0,
+  });
+  const pendingScroll = useRef<number | null>(null);
 
   useEffect(() => {
-    const onHashChange = () => setPage(pageFromHash());
+    const onHashChange = () => {
+      const next = pageFromHash();
+      if (next === page) return;
+      scrollPositions.current[page] = window.scrollY;
+      pendingScroll.current = scrollPositions.current[next] ?? 0;
+      setPage(next);
+    };
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
-  }, []);
+  }, [page]);
+
+  useLayoutEffect(() => {
+    if (pendingScroll.current === null) return;
+    const top = pendingScroll.current;
+    pendingScroll.current = null;
+    window.scrollTo(0, top);
+  }, [page]);
 
   const navigate = (next: PageId) => {
-    if (next === page) return;
+    if (next === page) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    scrollPositions.current[page] = window.scrollY;
+    pendingScroll.current = scrollPositions.current[next] ?? 0;
     // 底部 Tab 是同一层的页面切换，不进入浏览器/WebView 历史。
     // 否则 Android 返回手势会把“返回上一个 Tab”误当成“返回上一页”。
     window.history.replaceState(null, '', `#/${next}`);
     setPage(next);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const openLog = (options?: OpenLogOptions) => {
@@ -75,23 +100,38 @@ function AppContent() {
     openLog({ record });
   };
 
+  const pageContent = (id: PageId) => {
+    switch (id) {
+      case 'today':
+        return (
+          <TodayPage
+            onOpenLog={openLog}
+            onEditRecord={editRecord}
+            onNavigate={(target) => navigate(target)}
+          />
+        );
+      case 'records':
+        return <RecordsPage onOpenLog={openLog} onEditRecord={editRecord} />;
+      case 'stats':
+        return <StatsPage onOpenLog={openLog} />;
+      case 'library':
+        return <LibraryPage onOpenLog={openLog} />;
+      case 'settings':
+        return <SettingsPage />;
+    }
+  };
+
   if (loading) return <LoadingScreen />;
   if (error) return <ErrorScreen message={error} />;
 
   return (
     <>
       <AppShell page={page} onNavigate={navigate} onOpenLog={() => openLog()}>
-        {page === 'today' ? (
-          <TodayPage
-            onOpenLog={openLog}
-            onEditRecord={editRecord}
-            onNavigate={(target) => navigate(target)}
-          />
-        ) : null}
-        {page === 'records' ? <RecordsPage onOpenLog={openLog} onEditRecord={editRecord} /> : null}
-        {page === 'stats' ? <StatsPage onOpenLog={openLog} /> : null}
-        {page === 'library' ? <LibraryPage onOpenLog={openLog} /> : null}
-        {page === 'settings' ? <SettingsPage /> : null}
+        {PAGES.map((id) => (
+          <div key={id} className="page-slot" hidden={page !== id}>
+            {pageContent(id)}
+          </div>
+        ))}
       </AppShell>
 
       <LogSheet
