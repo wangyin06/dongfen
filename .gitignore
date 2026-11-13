@@ -3,6 +3,9 @@ dist/
 dist-android/
 .vite/
 release/
+.signing/
+*.keystore
+*.jks
 android/.gradle/
 android/build/
 android/local.properties

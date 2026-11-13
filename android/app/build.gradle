@@ -3,6 +3,10 @@ plugins {
 }
 
 def appVersion = new groovy.json.JsonSlurper().parseText(file('../../package.json').text).version
+def stableKeystore = file('dongfen-release.keystore')
+def stablePassword = System.getenv('ANDROID_KEYSTORE_PASSWORD')
+def stableAlias = System.getenv('ANDROID_KEY_ALIAS') ?: 'dongfen'
+def hasStableSigning = stableKeystore.exists() && stablePassword
 
 android {
     namespace 'com.wangyin.dongfen'
@@ -16,8 +20,27 @@ android {
         versionName appVersion
     }
 
+    signingConfigs {
+        if (hasStableSigning) {
+            stable {
+                storeFile stableKeystore
+                storePassword stablePassword
+                keyAlias stableAlias
+                keyPassword stablePassword
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            if (hasStableSigning) {
+                signingConfig signingConfigs.stable
+            }
+        }
         release {
+            if (hasStableSigning) {
+                signingConfig signingConfigs.stable
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
