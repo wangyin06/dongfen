@@ -16,17 +16,18 @@
 
 如果不想经过浏览器安装，可以直接下载 APK：
 
-**[dongfen-v1.0.3.apk](https://github.com/wangyin06/dongfen/releases/download/v1.0.3/dongfen-v1.0.3.apk)**
+**[dongfen-v1.0.4.apk](https://github.com/wangyin06/dongfen/releases/download/v1.0.4/dongfen-v1.0.4.apk)**
 
-- 大小 1,404,565 bytes（约 1.34 MiB），支持 Android 8.0+
+- 大小 1,404,933 bytes（约 1.34 MiB），支持 Android 8.0+
 - 离线 WebView 壳，内置全部前端资源，首次启动也不需要联网
 - JSON/CSV 导出会打开系统保存位置；JSON 导入会打开系统文件选择器
 - 导出取消/失败会反馈给页面，不会误报“已保存”
+- 返回手势：底部 Tab 不进入历史，有弹层先关闭弹层，根页面返回一次直接退出
 - 支持双指缩放，低视力用户可以放大操作
 - 数据保存在 App 自己的 WebView 存储中，与网页版数据互相独立
 - 卸载 App 会删除其中的本地数据
 - 使用 debug 签名，适合个人侧载，不是应用商店版本
-- SHA-256：`2f5956c672cd9421afd313642bfb29be60bf69f201069bd7d3a7f4a341fd3d43`
+- SHA-256：`08c781e4007ce531a8527975dfd6a21fdb8da4fec3800c3eebeec7b30e31182a`
 
 安装时如果系统提示“未知应用”，需要在文件管理器/浏览器设置里允许“安装未知应用”。
 
@@ -164,7 +165,7 @@ PWA 的 service worker 需要安全上下文：`localhost` 或 HTTPS。用手机
 
 - `pnpm check`：TypeScript 无错误
 - `pnpm test`：4 个测试文件、18 个用例全部通过
-- `pnpm build`：Pages 构建成功，PWA service worker 预缓存 11 个资源（460.67 KiB）
+- `pnpm build`：Pages 构建成功，PWA service worker 预缓存 11 个资源（460.83 KiB）
 - 桌面 1280px：今日、记录、统计、动作库、设置五页及记录/编辑/删除/导出流程已走通
 - 手机 390px / 360px：今日、统计、记录、动作库无横向溢出；记录操作按钮 44×44；自定义动作入口可见
 - 移动图表：柱体可聚焦并显示分数，读屏标签包含日期与分值
@@ -172,9 +173,10 @@ PWA 的 service worker 需要安全上下文：`localhost` 或 HTTPS。用手机
 - 导出：取消/失败不会提示成功；JSON 导出不会保存未确认的目标设置
 - 离线：关闭 preview 服务器后重新打开页面，应用仍可从 service worker 正常加载
 - GitHub Pages 线上验收：页面、manifest、图标、JS/CSS 均为 200；service worker 作用域 `/dongfen/`；断网刷新后应用仍正常显示
-- APK v1.0.3：GitHub Actions 构建成功，包内 JS 已注入 `1.0.3`，CSS 含最终弹层层级修复；Release 下载文件大小与 SHA-256 与构建产物一致
+- APK v1.0.4：GitHub Actions 构建成功，包内 JS 已注入 `1.0.4`，包含 `replaceState` 与 `__dongfenCloseTopModal`，无旧 `window.location.hash=` 逻辑；Release 下载文件大小与 SHA-256 与构建产物一致
+- 返回手势修复的 Web 层验证：连续切三个 Tab 后 `history.length` 仍为 1；打开记录弹层时返回调用可关闭弹层
 - 验收测试产生的记录和自定义动作已清空，默认周目标恢复为 13 分
 
 ## 版本
 
-v1.0.3 · 本地优先 · 无账号 · 无云端
+v1.0.4 · 本地优先 · 无账号 · 无云端
