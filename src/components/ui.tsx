@@ -15,6 +15,7 @@ import { CATEGORY_META } from '../data/exercises';
 type ModalLayer = {
   id: string;
   restoreFocus: HTMLElement | null;
+  close: () => void;
 };
 
 const modalStack: ModalLayer[] = [];
@@ -37,6 +38,19 @@ function isTopLayer(id: string): boolean {
   return modalStack[modalStack.length - 1]?.id === id;
 }
 
+// Android 壳的返回手势会调用这个函数：先关闭最上层弹层/确认框；
+// 没有弹层时返回 false，由原生层退出 Activity。
+function closeTopModal(): boolean {
+  const top = modalStack[modalStack.length - 1];
+  if (!top) return false;
+  top.close();
+  return true;
+}
+
+if (typeof window !== 'undefined') {
+  window.__dongfenCloseTopModal = closeTopModal;
+}
+
 function useModalLayer(open: boolean, panelRef: RefObject<HTMLElement | null>, onEscape: () => void) {
   const layerId = useId();
   const escapeRef = useRef(onEscape);
@@ -48,7 +62,11 @@ function useModalLayer(open: boolean, panelRef: RefObject<HTMLElement | null>, o
     if (!panel) return;
 
     const restoreFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    modalStack.push({ id: layerId, restoreFocus });
+    modalStack.push({
+      id: layerId,
+      restoreFocus,
+      close: () => escapeRef.current(),
+    });
     if (modalStack.length === 1) {
       document.body.classList.add('no-scroll');
       const root = document.getElementById('root');

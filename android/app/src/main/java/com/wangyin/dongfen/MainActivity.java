@@ -202,11 +202,20 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        if (webView != null && webView.canGoBack()) {
-            webView.goBack();
+        if (webView == null) {
+            super.onBackPressed();
             return;
         }
-        super.onBackPressed();
+
+        // 顶层 Tab 不进入 WebView 历史。返回手势先交给页面关闭弹层/确认框；
+        // 页面返回 false 表示当前没有弹层，直接退出 App，而不是逐个 Tab 回退。
+        webView.evaluateJavascript(
+                "(function(){try{return !!(window.__dongfenCloseTopModal&&window.__dongfenCloseTopModal());}catch(e){return false;}})()",
+                value -> {
+                    if (!"true".equals(value)) {
+                        finish();
+                    }
+                });
     }
 
     @Override

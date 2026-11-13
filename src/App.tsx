@@ -59,7 +59,9 @@ function AppContent() {
 
   const navigate = (next: PageId) => {
     if (next === page) return;
-    window.location.hash = `/${next}`;
+    // 底部 Tab 是同一层的页面切换，不进入浏览器/WebView 历史。
+    // 否则 Android 返回手势会把“返回上一个 Tab”误当成“返回上一页”。
+    window.history.replaceState(null, '', `#/${next}`);
     setPage(next);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
