@@ -16,10 +16,12 @@
 
 如果不想经过浏览器安装，可以直接下载 APK：
 
-**[dongfen-v1.0.4.apk](https://github.com/wangyin06/dongfen/releases/download/v1.0.4/dongfen-v1.0.4.apk)**
+**[dongfen-v1.0.5.apk](https://github.com/wangyin06/dongfen/releases/download/v1.0.5/dongfen-v1.0.5.apk)**
 
-- 大小 1,404,933 bytes（约 1.34 MiB），支持 Android 8.0+
+- 大小 1,405,533 bytes（约 1.34 MiB），支持 Android 8.0+
 - 离线 WebView 壳，内置全部前端资源，首次启动也不需要联网
+- 切换底部 Tab 会保留各页滚动位置、搜索与筛选状态；再次点击当前 Tab 回到顶部
+- 超过 30 天没有备份时，设置页会显示温和提醒；导出成功后自动消失
 - JSON/CSV 导出会打开系统保存位置；JSON 导入会打开系统文件选择器
 - 导出取消/失败会反馈给页面，不会误报“已保存”
 - 返回手势：底部 Tab 不进入历史，有弹层先关闭弹层，根页面返回一次直接退出
@@ -27,7 +29,7 @@
 - 数据保存在 App 自己的 WebView 存储中，与网页版数据互相独立
 - 卸载 App 会删除其中的本地数据
 - 使用 debug 签名，适合个人侧载，不是应用商店版本
-- SHA-256：`08c781e4007ce531a8527975dfd6a21fdb8da4fec3800c3eebeec7b30e31182a`
+- SHA-256：`a2534e5d8608903687e3c522bfb6ec35ee88b296893f1305ae887242f4394bd2`
 
 安装时如果系统提示“未知应用”，需要在文件管理器/浏览器设置里允许“安装未知应用”。
 
@@ -58,12 +60,14 @@
 - **动作库**：72 个内置动作，按模式与进退阶分组，支持搜索、类别/难度筛选；可添加自定义动作
 - **快速记录**：两步完成，支持次数/秒数、左右侧分别记录、同步两侧、计时器、质量系数、备注、实时得分预览
 - **设置**：周目标、日上限、周起始日、默认质量；JSON 完整备份、CSV 导出、JSON 合并/覆盖导入；清空数据
+- **状态保持**：切换底部 Tab 保留各页滚动位置、搜索和筛选；再次点击当前 Tab 回到顶部
+- **备份提醒**：超过 30 天没有导出备份时温和提示，导出成功后自动消失
 - **PWA**：manifest、service worker、离线缓存、主屏幕安装图标
 - **本地优先**：没有账号、没有云端、没有追踪；数据只存在当前浏览器的 IndexedDB
 - **输入保护**：关闭未保存的记录会确认；未来日期、非法次数/秒数会被拦截；计时器按真实时间计算，切后台不会少计
 - **导出反馈**：JSON/CSV 会等待浏览器或 Android 系统确认保存结果；取消或失败不会误报成功，也不会擅自保存未确认的设置
 - **无障碍与触控**：弹层焦点圈定/关闭恢复、筛选状态可读、图表可聚焦读屏、移动端操作按钮 44×44、正文与按钮达到 WCAG AA 对比度
-- **稳定性**：备份读取使用单只读事务；版本号由 `package.json` 单一来源注入网页和 APK；18 个 Vitest 单元测试覆盖计分、日期、校验与备份
+- **稳定性**：备份读取使用单只读事务；版本号由 `package.json` 单一来源注入网页和 APK；22 个 Vitest 单元测试覆盖计分、日期、校验、备份与备份提醒
 
 ## 开发
 
@@ -73,7 +77,7 @@
 pnpm install
 pnpm dev        # http://127.0.0.1:5173
 pnpm check      # TypeScript 类型检查
-pnpm test       # Vitest 单元测试（18 个）
+pnpm test       # Vitest 单元测试（22 个）
 pnpm build      # 生产构建，输出 dist/
 pnpm preview    # 预览生产构建
 ```
@@ -119,6 +123,7 @@ src/
   styles.css        # 完整视觉系统与响应式布局
 scripts/
   generate_icons.py # PWA 图标生成脚本
+  verify_apk.py     # 校验 APK 内资源、版本与返回桥接
 public/
   icons/            # 192/512/maskable 图标
   favicon.svg
@@ -164,8 +169,8 @@ PWA 的 service worker 需要安全上下文：`localhost` 或 HTTPS。用手机
 ## 验收记录
 
 - `pnpm check`：TypeScript 无错误
-- `pnpm test`：4 个测试文件、18 个用例全部通过
-- `pnpm build`：Pages 构建成功，PWA service worker 预缓存 11 个资源（460.83 KiB）
+- `pnpm test`：5 个测试文件、22 个用例全部通过
+- `pnpm build`：Pages 构建成功，PWA service worker 预缓存 11 个资源（462.59 KiB）
 - 桌面 1280px：今日、记录、统计、动作库、设置五页及记录/编辑/删除/导出流程已走通
 - 手机 390px / 360px：今日、统计、记录、动作库无横向溢出；记录操作按钮 44×44；自定义动作入口可见
 - 移动图表：柱体可聚焦并显示分数，读屏标签包含日期与分值
@@ -173,10 +178,13 @@ PWA 的 service worker 需要安全上下文：`localhost` 或 HTTPS。用手机
 - 导出：取消/失败不会提示成功；JSON 导出不会保存未确认的目标设置
 - 离线：关闭 preview 服务器后重新打开页面，应用仍可从 service worker 正常加载
 - GitHub Pages 线上验收：页面、manifest、图标、JS/CSS 均为 200；service worker 作用域 `/dongfen/`；断网刷新后应用仍正常显示
-- APK v1.0.4：GitHub Actions 构建成功，包内 JS 已注入 `1.0.4`，包含 `replaceState` 与 `__dongfenCloseTopModal`，无旧 `window.location.hash=` 逻辑；Release 下载文件大小与 SHA-256 与构建产物一致
+- APK v1.0.5：GitHub Actions 构建成功；包内 59 个条目，JS 为 `index-CZ3XTmi-.js`，包含 `1.0.5`、`replaceState`、`__dongfenCloseTopModal`，无旧 `window.location.hash=` 逻辑；Release 下载文件大小 1,405,533 bytes、SHA-256 与构建产物一致
 - 返回手势修复的 Web 层验证：连续切三个 Tab 后 `history.length` 仍为 1；打开记录弹层时返回调用可关闭弹层
-- 验收测试产生的记录和自定义动作已清空，默认周目标恢复为 13 分
+- 状态保持：动作库搜索“俯卧撑”、筛选“推”、滚动 386.86px，切到统计再返回后三者保持不变；再次点击当前 Tab 后滚动回到 0
+- 备份提醒：写入 40 天前记录并清除导出时间后，设置页出现“还没有导出过备份”；点击“现在导出”后提醒消失，上次导出时间更新
+- 移动端 390px / 360px：设置页备份提醒无横向溢出，按钮可见
+- 验收测试产生的记录、自定义动作和导出时间已清空，默认周目标恢复为 13 分
 
 ## 版本
 
-v1.0.4 · 本地优先 · 无账号 · 无云端
+v1.0.5 · 本地优先 · 无账号 · 无云端
