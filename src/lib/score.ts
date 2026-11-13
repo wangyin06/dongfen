@@ -1,4 +1,5 @@
 import type { CategoryId, Exercise, Quality, RecordDraft, UnitType, WorkoutRecord } from '../types';
+import { addDays } from './date';
 
 export const BASE_REPS = 10;
 export const BASE_SECONDS = 30;
@@ -160,13 +161,11 @@ export function groupRecordsByDate(records: WorkoutRecord[]): Array<{ date: stri
 
 export function streakDays(records: WorkoutRecord[], reference: string): number {
   const dates = new Set(records.map((record) => record.date));
-  let cursor = reference;
+  let cursor = dates.has(reference) ? reference : addDays(reference, -1);
   let count = 0;
   while (dates.has(cursor)) {
     count += 1;
-    const date = new Date(`${cursor}T12:00:00`);
-    date.setDate(date.getDate() - 1);
-    cursor = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    cursor = addDays(cursor, -1);
   }
   return count;
 }

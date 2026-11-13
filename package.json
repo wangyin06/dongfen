@@ -1,13 +1,14 @@
 {
   "name": "dongfen",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "check": "tsc --noEmit --pretty false"
+    "check": "tsc --noEmit --pretty false",
+    "test": "vitest run"
   },
   "dependencies": {
     "idb": "^8.0.0",
@@ -21,7 +22,8 @@
     "@vitejs/plugin-react": "^5.0.0",
     "typescript": "^5.9.2",
     "vite": "^7.1.7",
-    "vite-plugin-pwa": "^1.0.3"
+    "vite-plugin-pwa": "^1.0.3",
+    "vitest": "3.2.4"
   },
   "packageManager": "pnpm@11.28.5"
 }

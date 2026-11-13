@@ -130,16 +130,23 @@ export async function getCounts(): Promise<{ records: number; customExercises: n
 }
 
 export async function exportAllData(): Promise<BackupData> {
-  const [settings, customExercises, records] = await Promise.all([
-    getSettings(),
-    getCustomExercises(),
-    getAllRecords(),
+  const db = await getDB();
+  const tx = db.transaction(['records', 'settings', 'customExercises'], 'readonly');
+  const [settingsRaw, customExercises, records] = await Promise.all([
+    tx.objectStore('settings').get('app'),
+    tx.objectStore('customExercises').getAll(),
+    tx.objectStore('records').getAll(),
   ]);
+  await tx.done;
+  records.sort((a, b) => {
+    const byDate = b.date.localeCompare(a.date);
+    return byDate !== 0 ? byDate : b.createdAt.localeCompare(a.createdAt);
+  });
   return {
     app: 'dongfen',
     schemaVersion: 1,
     exportedAt: new Date().toISOString(),
-    settings,
+    settings: normalizeSettings(settingsRaw),
     customExercises,
     records,
   };

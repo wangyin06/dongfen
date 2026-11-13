@@ -28,7 +28,7 @@ import { exportAllData } from '../lib/db';
 import { useInstallPrompt } from '../hooks/useInstallPrompt';
 import { Dialog, Segmented } from '../components/ui';
 
-const APP_VERSION = '1.0.2';
+const APP_VERSION = __APP_VERSION__;
 const LAST_EXPORT_KEY = 'dongfen.last-export-at';
 
 function readLastExportAt(): string | undefined {

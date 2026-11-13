@@ -564,6 +564,7 @@ export function LogSheet({ open, onClose, editRecord = null, initialExercise = n
                     unit={unitName(selected.unitType)}
                     ariaLabel={`左侧${selected.name}`}
                     compact
+                    integer={selected.unitType === 'reps'}
                   />
                 </div>
                 <div className="side-field">
@@ -577,6 +578,7 @@ export function LogSheet({ open, onClose, editRecord = null, initialExercise = n
                     unit={unitName(selected.unitType)}
                     ariaLabel={`右侧${selected.name}`}
                     compact
+                    integer={selected.unitType === 'reps'}
                   />
                 </div>
               </div>
@@ -595,6 +597,7 @@ export function LogSheet({ open, onClose, editRecord = null, initialExercise = n
                 max={9999}
                 unit={unitName(selected.unitType)}
                 ariaLabel={selected.name}
+                integer={selected.unitType === 'reps'}
               />
               <div className="quick-chips">
                 {(selected.unitType === 'seconds' ? [30, 45, 60, 90, 120] : [10, 15, 20, 30, 50]).map((value) => (

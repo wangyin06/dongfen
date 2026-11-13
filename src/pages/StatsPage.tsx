@@ -14,6 +14,7 @@ import { useApp } from '../state/AppContext';
 import {
   daysBetween,
   endOfWeek,
+  formatDate,
   getLastNDays,
   getMonthDates,
   getPeriodRange,
@@ -189,8 +190,14 @@ export function StatsPage({ onOpenLog }: { onOpenLog: (options?: OpenLogOptions)
                 const height = score > 0 ? Math.max(4, (score / maxChart) * 100) : 2;
                 const showLabel = index % labelEvery === 0 || index === chartDates.length - 1;
                 return (
-                  <div className={`chart-column ${date === today ? 'is-today' : ''}`} key={date}>
-                    <span className="chart-tooltip">{score > 0 ? formatScore(score) : ''}</span>
+                  <div
+                    className={`chart-column ${date === today ? 'is-today' : ''}`}
+                    key={date}
+                    role="img"
+                    tabIndex={0}
+                    aria-label={`${formatDate(date)}，${score > 0 ? `${formatScore(score)} 分` : '没有训练记录'}`}
+                  >
+                    <span className="chart-tooltip" aria-hidden="true">{score > 0 ? formatScore(score) : ''}</span>
                     <div className="chart-bar-track">
                       <span className={`chart-bar ${score > settings.hardDayLimit ? 'is-hard' : ''}`} style={{ height: `${height}%` }} />
                     </div>

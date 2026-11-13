@@ -41,7 +41,6 @@ interface AppContextValue {
   customExercises: Exercise[];
   exercises: Exercise[];
   exerciseMap: Map<string, Exercise>;
-  toast: ToastMessage | null;
   notify: (message: string, tone?: ToastTone) => void;
   saveWorkout: (record: WorkoutRecord) => Promise<boolean>;
   removeWorkout: (id: string) => Promise<boolean>;
@@ -53,7 +52,13 @@ interface AppContextValue {
   refresh: () => Promise<void>;
 }
 
+interface ToastContextValue {
+  toast: ToastMessage | null;
+  notify: (message: string, tone?: ToastTone) => void;
+}
+
 const AppContext = createContext<AppContextValue | null>(null);
+const ToastContext = createContext<ToastContextValue | null>(null);
 
 function sortRecords(records: WorkoutRecord[]): WorkoutRecord[] {
   return [...records].sort((a, b) => {
@@ -211,31 +216,61 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await load(false);
   }, [load]);
 
-  const value: AppContextValue = {
-    loading,
-    error,
-    records,
-    settings,
-    customExercises,
-    exercises,
-    exerciseMap,
-    toast,
-    notify,
-    saveWorkout,
-    removeWorkout,
-    updateSettings,
-    addCustomExercise,
-    removeCustomExercise,
-    importData,
-    clearEverything,
-    refresh,
-  };
+  const value = useMemo<AppContextValue>(
+    () => ({
+      loading,
+      error,
+      records,
+      settings,
+      customExercises,
+      exercises,
+      exerciseMap,
+      notify,
+      saveWorkout,
+      removeWorkout,
+      updateSettings,
+      addCustomExercise,
+      removeCustomExercise,
+      importData,
+      clearEverything,
+      refresh,
+    }),
+    [
+      loading,
+      error,
+      records,
+      settings,
+      customExercises,
+      exercises,
+      exerciseMap,
+      notify,
+      saveWorkout,
+      removeWorkout,
+      updateSettings,
+      addCustomExercise,
+      removeCustomExercise,
+      importData,
+      clearEverything,
+      refresh,
+    ],
+  );
+  const toastValue = useMemo<ToastContextValue>(() => ({ toast, notify }), [toast, notify]);
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return (
+    <AppContext.Provider value={value}>
+      <ToastContext.Provider value={toastValue}>{children}</ToastContext.Provider>
+    </AppContext.Provider>
+  );
 }
 
 export function useApp(): AppContextValue {
   const context = useContext(AppContext);
   if (!context) throw new Error('useApp must be used inside AppProvider');
+  return context;
+}
+
+export function useToast(): ToastContextValue {
+  const context = useContext(ToastContext);
+  if (!context) throw new Error('useToast must be used inside AppProvider');
   return context;
 }

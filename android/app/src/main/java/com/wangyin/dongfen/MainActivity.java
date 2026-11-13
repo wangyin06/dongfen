@@ -55,7 +55,10 @@ public class MainActivity extends Activity {
         settings.setAllowContentAccess(false);
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
-        settings.setSupportZoom(false);
+        // 允许双指缩放，照顾低视力用户；隐藏系统缩放按钮，避免破坏底部导航布局。
+        settings.setSupportZoom(true);
+        settings.setBuiltInZoomControls(true);
+        settings.setDisplayZoomControls(false);
         settings.setMediaPlaybackRequiresUserGesture(false);
 
         webView.addJavascriptInterface(new AndroidFileBridge(), "AndroidApp");

@@ -76,8 +76,12 @@ export function LibraryPage({ onOpenLog }: { onOpenLog: (options?: OpenLogOption
       setFormError('动作库里已经有同名动作了。');
       return;
     }
-    if (!Number.isFinite(form.unitScore) || form.unitScore <= 0) {
-      setFormError('单位得分需要大于 0。');
+    if (!Number.isFinite(form.unitScore) || form.unitScore < 0.01 || form.unitScore > 10) {
+      setFormError('单位得分需要在 0.01 到 10 之间。');
+      return;
+    }
+    if (Math.abs(form.unitScore * 100 - Math.round(form.unitScore * 100)) > 1e-9) {
+      setFormError('单位得分最多保留两位小数。');
       return;
     }
     const exercise: Exercise = {
@@ -146,6 +150,7 @@ export function LibraryPage({ onOpenLog }: { onOpenLog: (options?: OpenLogOption
             type="button"
             className={`filter-chip ${category === 'all' ? 'is-active' : ''}`}
             onClick={() => setCategory('all')}
+            aria-pressed={category === 'all'}
           >
             全部
           </button>
@@ -157,6 +162,7 @@ export function LibraryPage({ onOpenLog }: { onOpenLog: (options?: OpenLogOption
                 type="button"
                 className={`filter-chip ${category === item.id ? 'is-active' : ''}`}
                 onClick={() => setCategory(item.id)}
+                aria-pressed={category === item.id}
               >
                 <Icon size={14} />
                 {item.label}
@@ -357,9 +363,11 @@ export function LibraryPage({ onOpenLog }: { onOpenLog: (options?: OpenLogOption
               <input
                 id="custom-score"
                 type="number"
+                inputMode="decimal"
                 min="0.01"
                 max="10"
                 step="0.01"
+                required
                 value={form.unitScore}
                 onChange={(event) => setForm((current) => ({ ...current, unitScore: Number(event.target.value) }))}
               />

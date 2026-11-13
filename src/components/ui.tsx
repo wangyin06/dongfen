@@ -1,13 +1,115 @@
 import {
   useEffect,
   useId,
+  useRef,
+  useState,
   type CSSProperties,
   type ReactNode,
+  type RefObject,
 } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, Minus, Plus, X, type LucideIcon } from 'lucide-react';
 import type { CategoryId } from '../types';
 import { CATEGORY_META } from '../data/exercises';
+
+type ModalLayer = {
+  id: string;
+  restoreFocus: HTMLElement | null;
+};
+
+const modalStack: ModalLayer[] = [];
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+function focusableElements(container: HTMLElement): HTMLElement[] {
+  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+    (element) => element.getClientRects().length > 0 && element.getAttribute('aria-hidden') !== 'true',
+  );
+}
+
+function isTopLayer(id: string): boolean {
+  return modalStack[modalStack.length - 1]?.id === id;
+}
+
+function useModalLayer(open: boolean, panelRef: RefObject<HTMLElement | null>, onEscape: () => void) {
+  const layerId = useId();
+  const escapeRef = useRef(onEscape);
+  escapeRef.current = onEscape;
+
+  useEffect(() => {
+    if (!open) return;
+    const panel = panelRef.current;
+    if (!panel) return;
+
+    const restoreFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    modalStack.push({ id: layerId, restoreFocus });
+    if (modalStack.length === 1) {
+      document.body.classList.add('no-scroll');
+      const root = document.getElementById('root');
+      root?.setAttribute('inert', '');
+      root?.setAttribute('aria-hidden', 'true');
+    }
+
+    const focusPanel = () => {
+      panel.focus({ preventScroll: true });
+      if (document.activeElement !== panel) {
+        const first = focusableElements(panel)[0];
+        first?.focus({ preventScroll: true });
+      }
+    };
+    const frame = window.requestAnimationFrame(focusPanel);
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!isTopLayer(layerId)) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        escapeRef.current();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const focusables = focusableElements(panel);
+      if (focusables.length === 0) {
+        event.preventDefault();
+        panel.focus({ preventScroll: true });
+        return;
+      }
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement;
+      if (event.shiftKey && (active === first || active === panel)) {
+        event.preventDefault();
+        last.focus({ preventScroll: true });
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus({ preventScroll: true });
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener('keydown', onKeyDown, true);
+      const index = modalStack.findIndex((layer) => layer.id === layerId);
+      const layer = index >= 0 ? modalStack.splice(index, 1)[0] : null;
+      if (modalStack.length === 0) {
+        document.body.classList.remove('no-scroll');
+        const root = document.getElementById('root');
+        root?.removeAttribute('inert');
+        root?.removeAttribute('aria-hidden');
+      }
+      if (layer?.restoreFocus?.isConnected) {
+        window.requestAnimationFrame(() => layer.restoreFocus?.focus({ preventScroll: true }));
+      }
+    };
+  }, [open, layerId, panelRef]);
+}
 
 export function Sheet({
   open,
@@ -29,33 +131,29 @@ export function Sheet({
   closeGuard?: () => boolean;
 }) {
   const titleId = useId();
+  const panelRef = useRef<HTMLElement>(null);
+  const closeGuardRef = useRef(closeGuard);
+  closeGuardRef.current = closeGuard;
   const requestClose = () => {
-    if (closeGuard?.()) return;
+    if (closeGuardRef.current?.()) return;
     onClose();
   };
 
-  useEffect(() => {
-    if (!open) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        if (closeGuard?.()) return;
-        onClose();
-      }
-    };
-    document.addEventListener('keydown', onKeyDown);
-    document.body.classList.add('no-scroll');
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      document.body.classList.remove('no-scroll');
-    };
-  }, [open, onClose, closeGuard]);
+  useModalLayer(open, panelRef, requestClose);
 
   if (!open) return null;
 
   return createPortal(
     <div className="sheet-layer">
       <div className="sheet-backdrop" onClick={requestClose} aria-hidden="true" />
-      <section className={`sheet ${className}`} role="dialog" aria-modal="true" aria-labelledby={titleId}>
+      <section
+        ref={panelRef}
+        className={`sheet ${className}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+      >
         <div className="sheet-grab" aria-hidden="true" />
         <header className="sheet-head">
           <div className="sheet-heading">
@@ -92,25 +190,24 @@ export function Dialog({
   tone?: 'default' | 'danger';
 }) {
   const titleId = useId();
-  useEffect(() => {
-    if (!open) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKeyDown);
-    document.body.classList.add('no-scroll');
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      document.body.classList.remove('no-scroll');
-    };
-  }, [open, onClose]);
+  const panelRef = useRef<HTMLElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  useModalLayer(open, panelRef, () => onCloseRef.current());
 
   if (!open) return null;
 
   return createPortal(
     <div className="dialog-layer">
       <div className="dialog-backdrop" onClick={onClose} aria-hidden="true" />
-      <section className={`dialog-card ${tone === 'danger' ? 'is-danger' : ''}`} role="alertdialog" aria-modal="true" aria-labelledby={titleId}>
+      <section
+        ref={panelRef}
+        className={`dialog-card ${tone === 'danger' ? 'is-danger' : ''}`}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+      >
         <div className="dialog-icon" aria-hidden="true">
           <AlertTriangle size={22} />
         </div>
@@ -196,6 +293,7 @@ export function Stepper({
   unit,
   ariaLabel,
   compact = false,
+  integer = false,
 }: {
   value: number;
   onChange: (value: number) => void;
@@ -205,27 +303,64 @@ export function Stepper({
   unit?: string;
   ariaLabel: string;
   compact?: boolean;
+  integer?: boolean;
 }) {
-  const clamp = (next: number) => Math.min(max, Math.max(min, next));
+  const [text, setText] = useState(String(value));
+  const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    if (!editing) setText(String(value));
+  }, [value, editing]);
+
+  const normalize = (raw: string) => {
+    if (!raw.trim()) return value;
+    let next = Number(raw);
+    if (!Number.isFinite(next)) next = value;
+    if (integer) next = Math.round(next);
+    return Math.min(max, Math.max(min, next));
+  };
+
+  const commit = () => {
+    const next = normalize(text);
+    setEditing(false);
+    setText(String(next));
+    if (next !== value) onChange(next);
+  };
+
+  const stepTo = (next: number) => {
+    const normalized = Math.min(max, Math.max(min, integer ? Math.round(next) : next));
+    setEditing(false);
+    setText(String(normalized));
+    onChange(normalized);
+  };
+
   return (
     <div className={`stepper ${compact ? 'is-compact' : ''}`}>
-      <button type="button" className="stepper-btn" onClick={() => onChange(clamp(value - step))} aria-label={`减少${ariaLabel}`}>
+      <button type="button" className="stepper-btn" onClick={() => stepTo(value - step)} aria-label={`减少${ariaLabel}`}>
         <Minus size={18} />
       </button>
       <label className="stepper-value">
         <input
           type="number"
-          inputMode="numeric"
-          value={value}
+          inputMode={integer ? 'numeric' : 'decimal'}
+          value={text}
           min={min}
           max={max}
-          step={step}
+          step={integer ? 1 : step}
           aria-label={ariaLabel}
-          onChange={(event) => onChange(clamp(Number(event.target.value) || 0))}
+          onFocus={() => setEditing(true)}
+          onChange={(event) => setText(event.target.value)}
+          onBlur={commit}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              event.currentTarget.blur();
+            }
+          }}
         />
         {unit ? <span>{unit}</span> : null}
       </label>
-      <button type="button" className="stepper-btn" onClick={() => onChange(clamp(value + step))} aria-label={`增加${ariaLabel}`}>
+      <button type="button" className="stepper-btn" onClick={() => stepTo(value + step)} aria-label={`增加${ariaLabel}`}>
         <Plus size={18} />
       </button>
     </div>

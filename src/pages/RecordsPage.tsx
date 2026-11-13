@@ -102,6 +102,7 @@ export function RecordsPage({
             type="button"
             className={`filter-chip ${category === 'all' ? 'is-active' : ''}`}
             onClick={() => setCategory('all')}
+            aria-pressed={category === 'all'}
           >
             <SlidersHorizontal size={14} />
             全部
@@ -114,6 +115,7 @@ export function RecordsPage({
                 type="button"
                 className={`filter-chip ${category === item.id ? 'is-active' : ''}`}
                 onClick={() => setCategory(item.id)}
+                aria-pressed={category === item.id}
               >
                 <Icon size={14} />
                 {item.label}

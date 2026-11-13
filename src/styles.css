@@ -8,12 +8,14 @@
   --surface-3: #f2ecdf;
   --ink: #18332b;
   --ink-2: #29463c;
-  --muted: #788079;
-  --muted-2: #9aa198;
+  --muted: #5f665f;
+  --muted-2: #686f68;
   --line: rgba(24, 51, 43, 0.12);
   --line-strong: rgba(24, 51, 43, 0.2);
   --coral: #ef6a3a;
-  --coral-deep: #d95627;
+  --coral-action: #c24a20;
+  --coral-action-deep: #a83f19;
+  --coral-deep: #b9471e;
   --coral-soft: #fbe6dc;
   --coral-pale: #fdf2ec;
   --sage: #5f7b68;
@@ -293,12 +295,17 @@ a {
 
 .btn-primary {
   color: #fffaf2;
-  background: var(--coral);
-  box-shadow: 0 9px 20px rgba(217, 86, 39, 0.2);
+  background: var(--coral-action);
+  box-shadow: 0 9px 20px rgba(168, 63, 25, 0.22);
 }
 
 .btn-primary:hover {
-  background: var(--coral-deep);
+  background: var(--coral-action-deep);
+}
+
+.btn-primary:disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
 }
 
 .btn-secondary {
@@ -1216,7 +1223,7 @@ a {
 .record-actions {
   display: flex;
   align-items: center;
-  gap: 1px;
+  gap: 4px;
   opacity: 0.6;
   transition: opacity 150ms ease;
 }
@@ -1711,9 +1718,16 @@ a {
   transition: opacity 150ms ease, transform 150ms ease;
 }
 
-.chart-column:hover .chart-tooltip {
+.chart-column:hover .chart-tooltip,
+.chart-column:focus .chart-tooltip,
+.chart-column:focus-within .chart-tooltip {
   opacity: 1;
   transform: translateY(0);
+}
+
+.chart-column:focus {
+  outline: 2px solid var(--coral-action);
+  outline-offset: 4px;
 }
 
 .chart-bar-track {
@@ -2776,6 +2790,7 @@ a {
 
 .sheet {
   position: relative;
+  z-index: 1;
   display: flex;
   width: min(680px, 100%);
   max-height: 90vh;
@@ -2847,6 +2862,7 @@ a {
 
 .dialog-card {
   position: relative;
+  z-index: 1;
   width: min(390px, 100%);
   padding: 23px;
   border-radius: 20px;
@@ -2896,6 +2912,7 @@ a {
 .toast {
   position: fixed;
   bottom: 26px;
+  pointer-events: none;
   left: 50%;
   z-index: 200;
   display: flex;
@@ -3737,8 +3754,8 @@ a {
     padding: 0 14px;
     border-radius: 99px;
     color: #fff8ed;
-    background: var(--coral);
-    box-shadow: 0 10px 24px rgba(217, 86, 39, 0.28);
+    background: var(--coral-action);
+    box-shadow: 0 10px 24px rgba(168, 63, 25, 0.3);
     font-size: 11px;
     font-weight: 700;
   }
@@ -3749,7 +3766,7 @@ a {
   }
 
   .toast {
-    bottom: calc(82px + env(safe-area-inset-bottom));
+    bottom: calc(128px + env(safe-area-inset-bottom));
   }
 
   .stats-overview {
@@ -3942,8 +3959,8 @@ a {
   }
 
   .record-row .record-actions .icon-action {
-    width: 28px;
-    height: 26px;
+    width: 44px;
+    height: 44px;
   }
 
   .record-score {
@@ -4229,7 +4246,13 @@ a {
   }
 
   .chart-tooltip {
-    display: none;
+    display: block;
+    max-width: 54px;
+    padding: 2px 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 8px;
   }
 }
 
